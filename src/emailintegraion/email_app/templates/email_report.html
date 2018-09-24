@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title> View Emails </title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="col-xs-10" name="view_email" id="view_email" style="text-align: center; margin: 10px 0px 10px 0px;">
+    <span style="font-weight: bolder; font-size: 23px;"> Email Logs </span>
+    <a class="btn btn-primary btn-sm" data-toggle="modal" href="{% url 'view_email_report' %}?fetch_email=me" role="button" style="float: right">
+        Fetch Email  <span class="glyphicon glyphicon-envelope" style="padding-left: 2px;"></span>
+    </a>
+</div>
+<div class="col-xs-10" name="Container">
+    <table class="table table-bordered" style="">
+        <thead>
+            <tr>
+                <th> Date </th>
+                <th> From </th>
+                <th> To </th>
+                <th> Subject </th>
+                <th> Email Content </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for email_data_result in email_data_results %}
+            <tr>
+                <td> {{ email_data_result.date }}</td>
+                <td> {{ email_data_result.from }} </td>
+                <td> {{ email_data_result.to }} </td>
+                <td> {{ email_data_result.subject }} </td>
+                <td> {{ email_data_result.email_content }} </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>

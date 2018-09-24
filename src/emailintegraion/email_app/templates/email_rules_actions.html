@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title> Gmail Rules </title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script>
+    var len = 0;
+    var action_len = 0
+    var action_count = 0
+    var filter_count = 0
+    var ss =0,m ="";
+    filter_query = "";
+    filter_query_key = 'query';
+    valid_message = "SUCCESS";
+
+    function GetHtml()
+    {
+        var $html = $('.filter_section').clone();
+        $html.find('[name=gmail_fields]')[0].name="gmail_fields" + len;
+        $html.find('[id=gmail_fields]')[0].id="gmail_fields" + len;
+        $html.find('[id=gmail_field_operation]')[0].id="gmail_field_operation" + len;
+        $html.find('[name=gmail_field_operation]')[0].name="gmail_field_operation" + len;
+        $html.find('[id=filtertype]')[0].id="filtertype" + len;
+        $html.find('[id=element]')[0].id="element" + len;
+        $html.find('[id=gmail_search]')[0].id="gmail_search" + len;
+        $html.find('[id=gmail_fields_]')[0].id="gmail_fields_" + len;
+        $html.find('[name=gmail_search_value]')[0].name="gmail_search_value" + len;
+        $html.find('[id=gmail_search_value]')[0].id="gmail_search_value" + len;
+        len ++;
+        return $html.html();
+    }
+    function cloneActions()
+    {
+        var $actionhtml = $('.action_section').clone();
+        $actionhtml.find('[name=gmail_action_types]')[0].name="gmail_action_types" + action_len;
+        $actionhtml.find('[id=gmail_action_types]')[0].id="gmail_action_types" + action_len;
+        $actionhtml.find('[id=gmail_action_operation]')[0].id="gmail_action_operation" + action_len;
+        $actionhtml.find('[name=gmail_action_operation]')[0].name="gmail_action_operation" + action_len;
+        $actionhtml.find('[id=actiontype]')[0].id="actiontype" + action_len;
+        $actionhtml.find('[id=action_element]')[0].id="action_element" + action_len;
+        $actionhtml.find('[id=gmail_actions]')[0].id="gmail_actions" + action_len;
+        action_len ++;
+        return $actionhtml.html();
+    }
+
+    function create_criteria_query(email_filter_column, email_filter_condition, email_filter_column_content, overall_condition){
+        gmail_json = {};
+        for (var i = 0; i < email_filter_column.length; i++) {
+            if (email_filter_column[i]=='message'){email_filter_column_value_query = ''} else{email_filter_column_value_query = email_filter_column[i]+':'}
+            if(i== email_filter_column.length-1){overall_condition='';}
+          //if (email_filter_condition[i] == 'contains'){filter_query += email_filter_column_value_query+'"'+email_filter_column_content[i]+'" '}
+          if (email_filter_condition[i] == 'contains'){filter_query += email_filter_column_value_query+''+email_filter_column_content[i]+' '+overall_condition+' '}
+          if (email_filter_condition[i] == 'equal'){filter_query += email_filter_column_value_query+''+email_filter_column_content[i]+' '+overall_condition+' '}
+          if (email_filter_condition[i] == 'does_not_contains'){filter_query += email_filter_column_value_query+'-'+email_filter_column_content[i]+' '+overall_condition+' '}
+          if (email_filter_condition[i] == 'not_equal'){filter_query += email_filter_column_value_query+'-'+email_filter_column_content[i]+' '+overall_condition+' '}
+          if (email_filter_condition[i] == 'less_than'){filter_query += 'older_than:'+email_filter_column_content[i]+'d '+overall_condition+' '}
+          if (email_filter_condition[i] == 'greater_than'){filter_query += 'newer_than:'+email_filter_column_content[i]+'d '+overall_condition+' '}
+          // gmail_json[email_filter_column[i]] = email_filter_column_content[i];
+        }
+        if (filter_query != ''){ filter_query = jQuery.trim(filter_query); gmail_json[filter_query_key] = filter_query }
+        gmail_json = JSON.stringify(gmail_json);
+        return gmail_json;
+    }
+
+    function create_action_query(gmail_action_rules, gmail_condition_rules){
+      gmail_action_data={};
+      add_labelid_list = [];
+      remove_labelid_list = [];
+      for (var i = 0; i < gmail_action_rules.length; i++) {
+        if(gmail_condition_rules[i] == 'PERSONAL'){gmail_condition_rule = 'Label_1';} else {gmail_condition_rule = gmail_condition_rules[i];}
+        if(gmail_action_rules[i] == 'addLabelIds'){add_labelid_list.push(gmail_condition_rule);}
+        if(gmail_action_rules[i] == 'removeLabelIds'){remove_labelid_list.push(gmail_condition_rules[i]);}
+      }
+      gmail_action_data["addLabelIds"] = add_labelid_list;
+      gmail_action_data["removeLabelIds"] = remove_labelid_list;
+      gmail_action_data = JSON.stringify(gmail_action_data);
+      return gmail_action_data;
+    }
+
+    function create_gmail_filter_search(email_filter_column, email_filter_condition, email_filter_column_content){
+        gmail_json = {};
+        for (var i = 0; i < email_filter_column.length; i++) {
+            gmail_json[email_filter_column[i]] = email_filter_column_content[i];
+          }
+         gmail_json = JSON.stringify(gmail_json);
+         return gmail_json;
+    }
+
+    function create_gmail_action_search(gmail_action_rules, gmail_condition_rules){
+      gmail_action_data = {};
+      for (var i = 0; i < gmail_action_rules.length; i++) {
+            gmail_action_data[gmail_action_rules[i]] = gmail_condition_rules[i];
+      }
+      gmail_action_data = JSON.stringify(gmail_action_data);
+      return gmail_action_data;
+    }
+
+    $(document).ready(function(){
+        $('#error_message').hide();
+        // Clone fields
+        $('#addRow').click(function () {
+            filter_count++;
+            if (filter_count<4){
+                {  $('<div/>', {'class' : 'extra_filter_section','id' : 'extra_filter_section', html: GetHtml()}).hide().appendTo('#container').slideDown('slow');}
+                cloned_operations = "gmail_field_operation" + parseInt(action_len-1);
+                $('#'+cloned_operations).html('<option value=""> Select Conditions </option>');
+            }
+            else{
+                alert("Filter limit exceeded");
+            }
+        });
+
+        // Clone actions
+        $('#addAction').click(function () {
+            action_count++;
+            if (action_count<4){
+                {  $('<div/>', {'class' : 'extra_action_section','id' : 'extra_action_section', html: cloneActions()}).hide().appendTo('#actioncontainer').slideDown('slow');}
+                action_cloned_operations = "gmail_action_operation" + parseInt(len-1);
+                $('#'+action_cloned_operations).html('<option value=""> Select Actions </option>');
+            }
+            else{
+                alert("Action limit exceeded");
+            }
+        });
+
+        // Submit Function
+        $('#myForm').submit(function(){
+            $('#error_message').show();
+            rules = $("#gmail_rule_description").val();
+            overall_condition = $("#gmail_overall_filter option:selected").val();
+            // Validation
+            if(!$('#gmail_rule_description').val()){
+                $('#error_message').hide();
+                $('#error_message').html("Rule Description should not empty");
+                $('#error_message').show();
+                return false;
+            }
+            if(overall_condition == ''){
+                $('#error_message').hide();
+                $('#error_message').html("Select any action condition");
+                $('#error_message').show();
+                return false;
+            }
+
+            // Gmail rules json
+            var mail_filters = [];
+            var mail_filters_conditions = [];
+            var mail_filters_content = [];
+            mail_filter_count = 0
+            $.each($(".gmail_common_fields option:selected"), function(){
+                email_filter_id = $(this).parents()[0].id;
+                email_id_char = email_filter_id.substr(-1);
+                email_multi_search_field_val = $(this).val();
+                if (email_id_char == 's'){
+                    email_search_value_id = $('#gmail_search_value').val();
+                    if(email_search_value_id == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Search value should not be empty");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                        return false;
+                    }
+                    else{
+                        if(email_multi_search_field_val == 'received_date'){
+                            var numeric_check = /^\d+$/;
+                            if(!email_search_value_id.match(numeric_check)){
+                                valid_message = "SUCCESS";
+                                $('#error_message').hide();
+                                $('#error_message').html("Search value should be numeric value");
+                                $('#error_message').show();
+                                valid_message = "Error";
+                                return false;
+                            }
+
+                        }
+                    }
+                }
+                else{
+                     email_search_value_id = $('#gmail_search_value'+email_id_char).val();
+                     if(email_search_value_id == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Search value should not be empty");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                        return false;
+                    }
+                }
+                if(email_multi_search_field_val == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Select any search fields");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                        return false;
+                }
+                mail_filters.push($(this).val());
+                mail_filters_content.push(email_search_value_id);
+            });
+            if(valid_message == "Error") { return false; }
+            $.each($(".gmail_filter_condition option:selected"), function(){
+                email_multi_condition_field_val = $(this).val();
+                if(email_multi_condition_field_val == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Select any search condition");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                }
+                mail_filters_conditions.push($(this).val());
+            });
+            if(valid_message == "Error") { return false; }
+            gmail_rules_json = create_criteria_query (mail_filters, mail_filters_conditions, mail_filters_content, overall_condition);
+            // gmail_rules_json = create_gmail_filter_search(mail_filters, mail_filters_conditions, mail_filters_content);
+
+            //gmail_action_json
+            gmail_action_rules = [];
+            gmail_condition_rules = []
+            $.each($(".gmail_action_types option:selected"), function(){
+                email_action_id = $(this).parents()[0].id;
+                email_action_id_char = email_action_id.substr(-1);
+                multi_action_val = $(this).val();
+                if (email_action_id_char == 's'){
+                    email_action_value_id = $('#gmail_action_operation').val();
+                    if(email_action_value_id == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Select any action field");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                        return false;
+                    }
+                }
+                else{
+                     email_action_value_id = $('#gmail_action_operation'+email_action_id_char).val();
+                     if(email_action_value_id == ''){
+                        valid_message = "SUCCESS";
+                        $('#error_message').hide();
+                        $('#error_message').html("Select any action field");
+                        $('#error_message').show();
+                        valid_message = "Error";
+                        return false;
+                    }
+                }
+                if(multi_action_val == ''){
+                    valid_message = "SUCCESS";
+                    $('#error_message').hide();
+                    $('#error_message').html("Select any action scenario");
+                    $('#error_message').show();
+                    valid_message = "Error";
+                    return false;
+                }
+
+                gmail_action_rules.push($(this).val().split('_')[0]);
+                gmail_condition_rules.push(email_action_value_id);
+            });
+            if(valid_message == "Error") { return false; }
+            gmail_action_json = create_action_query(gmail_action_rules, gmail_condition_rules)
+            // gmail_action_json = create_gmail_action_search(gmail_action_rules, gmail_condition_rules);
+            // Post the values
+             $.ajax({
+                     type: 'POST' ,
+                     url: '/email/rules/create/',
+                     datatype: 'json' ,
+                     data:{
+                         csrfmiddlewaretoken: '{{ csrf_token }}',
+                         rule_description : rules,
+                         overall_condition : overall_condition,
+                         gmail_rules_json : gmail_rules_json,
+                         gmail_action_json : gmail_action_json,
+                         filter_action_create : "yes",
+                         },
+                         success: function(response_json) {
+                             $("#createRuleModel").modal();
+                        },
+                        error: function (xhr, errmsg, err) {
+                            alert(xhr.status + ": " + xhr.responseText);
+                        }
+             });
+            return false;
+          });
+    });
+
+     // Select box changes
+     $(document).on("change", ".gmail_common_fields", function (ev) {
+        gmail_parent_field = $(this).attr('id');
+        gmail_parent_value = $(this).val();
+        gmail_parent_field_id = gmail_parent_field.substr(-1);
+        if (gmail_parent_field_id == 's'){
+        gmail_field_operation_id = "gmail_field_operation";
+        }
+        else{
+        gmail_field_operation_id = "gmail_field_operation"+gmail_parent_field_id
+        }
+        // Query Formation
+        if(gmail_parent_value == "received_date"){
+            $('#'+gmail_field_operation_id).html('<option value="less_than"> Less than </option><option value="greater_than"> Greater than </option>');
+        }
+        else{
+            $('#'+gmail_field_operation_id).html('<option value="contains"> Contains </option><option value="does_not_contains"> Does not contains </option><option value="equal"> Equal </option><option value="not_equal"> Not equal </option>');
+        }
+        // Old content hide start
+        /* if(gmail_parent_value == "received_date"){
+            $('#'+gmail_field_operation_id).html('<option value="less_than"> Less than </option><option value="greater_than"> Greater than </option>');
+        }
+        else{
+            $('#'+gmail_field_operation_id).html('<option value="contains"> Contains </option><option value="does_not_contains"> Does not contains </option><option value="equal"> Equal </option><option value="not_equal"> Not equal </option>');
+        } */
+        // Old content hide end
+     });
+
+     // Action select box changes
+     $(document).on("change", ".gmail_action_types", function (ev) {
+        action_gmail_parent_field = $(this).attr('id');
+        action_gmail_parent_value = $(this).val();
+        action_gmail_parent_field_id = action_gmail_parent_field.substr(-1);
+        if (action_gmail_parent_field_id == 's'){
+        action_gmail_field_operation_id = "gmail_action_operation";
+        }
+        else{
+        action_gmail_field_operation_id = "gmail_action_operation"+action_gmail_parent_field_id
+        }
+        if(action_gmail_parent_value == "addLabelIds_movemessage"){
+            $('#'+action_gmail_field_operation_id).html('<option value="INBOX"> Move to INBOX </option><option value="TRASH"> Move to TRASH </option>');
+        }
+        else if(action_gmail_parent_value == "addLabelIds_label"){
+            $('#'+action_gmail_field_operation_id).html('<option value="IMPORTANT"> IMPORTANT </option><option value="PERSONAL"> Personal </option>');
+        }
+        else if(action_gmail_parent_value == "removeLabelIds_markasread"){
+            $('#'+action_gmail_field_operation_id).html('<option value="UNREAD"> yes </option>');
+        }
+        else if(action_gmail_parent_value == "addLabelIds_markasunread"){
+        $('#'+action_gmail_field_operation_id).html('<option value="UNREAD"> Yes </option>');
+        }
+        else{
+            }
+     });
+
+
+     // Remove cloned fields
+     $(document).on("click", ".RemoveEl", function (ev) {
+            var cloned_div = $(this).parents()[2].id;
+            if (cloned_div =="extra_filter_section"){filter_count--;$(this).parents()[1].remove();}else{alert('cannot remove this');}
+        });
+
+      // Remove cloned action fields
+      $(document).on("click", ".actionRemove", function (ev) {
+            var action_cloned_div = $(this).parents()[2].id;
+            if (action_cloned_div =="extra_action_section"){action_count--;$(this).parents()[1].remove();}else{alert('cannot remove this');}
+        });
+    </script>
+</head>
+<body>
+
+<div class="col-xs-12" name="create_rule" id="create_rule" style="text-align: center; margin: 10px 0px 10px 0px;">
+    <span style="font-weight: bolder; font-size: 23px;"> Create Gmail Rule </span>
+    <a class="btn btn-primary btn-sm" data-toggle="modal" href="{% url 'gmail_action_rules' 'list' %}" role="button" style="float: right; margin-right: 3%;">
+        Back to List  <span class="glyphicon glyphicon-share-alt" style="padding-left: 2px;"></span>
+    </a>
+</div>
+
+<div class="col-xs-8" style="border: 1px solid lightgray;margin: 10px;padding-bottom: 10px;width: 95%;">
+<form class="form" accept-charset="UTF-8" id="myForm" name="form_data_new">
+    <div class="input-group col-xs-4" style="margin-left: 23px;margin-top: 10px;">
+        <span class="input-group-addon" id="error_message" style="background: rgba(69, 70, 74, 0.867);font-size: 20px;color: white;"> Loading ...</span>
+    </div>
+
+    <div class="input-group col-xs-4" style="margin-left: 23px;margin-top: 10px;">
+        <span class="input-group-addon">Description</span>
+        <input id="gmail_rule_description" type="text" class="form-control" name="gmail_rule_description" placeholder="Enter Rule Name">
+    </div>
+
+    <div class="overall_filter_box" style="margin-top:10px; margin-left:23px">
+        If <select class="gmail_overall_filter" name="gmail_overall_filter" id="gmail_overall_filter">
+            <option value=""> Select condition </option>
+            <option value="AND"> All </option>
+            <option value="OR"> Any </option>
+        </select> of the following conditions are met:
+    </div>
+
+    <!-- Filter Box Start -->
+    <div class="col-xs-12" name="filterbox" id="filterbox" style="margin-left:-17px; margin-bottom:10px">
+        <div class="filter_section form-group" name="filter_section1" id="filter_section1">
+            <div class="form-group" id="element" class="elem" style="margin:10px">
+                <div class="col-xs-2" name="gmail_fields_" id="gmail_fields_">
+                    <select class="form-control gmail_common_fields" name="gmail_fields" id="gmail_fields">
+                        <option value=""> Select Fields </option>
+                        <option value="from"> From </option>
+                        <option value="to"> To </option>
+                        <option value="subject"> Subject</option>
+                        <option value="message"> Message </option>
+                        <option value="received_date"> Received Date </option>
+                      </select>
+                </div>
+                <div class="col-xs-2" name="filtertype" id="filtertype">
+                    <select class="form-control gmail_filter_condition" name="gmail_field_operation" id="gmail_field_operation">
+                        <option value=""> Select Conditions </option>
+                    </select>
+                </div>
+                <div class="col-xs-2" name="gmail_search" id="gmail_search">
+                    <input class="form-control" type="text" name="gmail_search_value" id="gmail_search_value">
+                </div>
+                <div class="col-xs-1" name="filter_close_" id="filter_close_" style="padding:5px;margin-top:-2px;margin-left:-10px;">
+                    <a class="btn btn-primary btn-sm RemoveEl"><i class="glyphicon glyphicon-remove"></i></a>
+                    <!--<i class="glyphicon glyphicon-remove" style="padding-top: 10px;"></i>-->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="container" class=" form-horizontal"></div>
+
+    <div class="col-xs-4" name="add_row_box" id="add_row_box" style="margin-top:10px; margin-left: 10px;">
+        <input class="btn btn-primary btn-sm" type="button" value="Add more filter" id="addRow" >
+        <!--<a class="btn btn-primary btn-sm" id="addrow">-->
+            <!--<i class="icon-plus-sign icon-white"></i> Add More filter-->
+        <!--</a>-->
+    </div>
+
+    <!-- Filter Box End -->
+
+
+    <!-- Action Box Start -->
+    <div class="form-control col-xs-12" style="border: none; margin-top: 10px; margin-left: 12px;">
+        <label> Perform the following actions:</label>
+    </div>
+
+    <div class="col-xs-12" name="actionbox" id="actionbox" style="margin-left:-17px; margin-bottom:10px">
+        <div class="action_section form-group" name="action_section1" id="action_section1">
+            <div class="form-group" id="action_element" class="action_elem" style="margin:10px">
+                <div class="col-xs-2" name="gmail_actions" id="gmail_actions">
+                    <select class="form-control gmail_action_types" name="gmail_action_types" id="gmail_action_types">
+                        <option value=""> Select Action </option>
+                        <option value="addLabelIds_movemessage"> Move Message </option>
+                        <option value="removeLabelIds_markasread"> Mark as Read </option>
+                        <option value="addLabelIds_markasunread"> Mark as UnRead </option>
+                        <option value="addLabelIds_label"> Add Label </option>
+                    </select>
+                </div>
+
+                <div class="col-xs-2" name="actiontype" id="actiontype">
+                    <select class="form-control gmail_action_condition" name="gmail_action_operation" id="gmail_action_operation">
+                        <option value=""> Select Conditions </option>
+                    </select>
+                </div>
+                <div class="col-xs-1" name="action_close" id="action_close" style="padding:5px;margin-top:-2px;margin-left:-10px;">
+                    <a class="btn btn-primary btn-sm actionRemove"><i class="glyphicon glyphicon-remove"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="actioncontainer" class=" form-horizontal"></div>
+
+    <div class="col-xs-4" name="add_action_box" id="add_action_box" style="margin-top:10px; margin-left: 10px;">
+        <input class="btn btn-primary btn-sm" type="button" value="Add more action" id="addAction" >
+    </div>
+    <!-- Action Box End -->
+    <div class="col-xs-12" name="create_box" id="create_box" style="margin-top:20px; margin-left: 10px;">
+        <button class="btn btn-primary btn-sm"> Create Filter </button>
+    </div>
+</form>
+</div>
+
+<!-- Modal -->
+<div id="createRuleModel" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+
+    <!-- Modal content-->
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Create Rule</h4>
+      </div>
+      <div class="modal-body">
+        <p style="color: green; font-size: 15px;">Gmail Filter Rule Successfully created</p>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-primary btn-sm" href="{% url 'gmail_action_rules' 'list' %}" role="button">
+            View Rule
+        </a>
+        <!--<button type="button" class="btn btn-primary btn-sm" id="viewRule"> View Rule </button>-->
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>

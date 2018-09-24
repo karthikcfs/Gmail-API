@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title> List Rules </title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $("#deleteRow").click(function(){
+                $("#deleteModel").modal();
+                var delete_requested_id = this.className
+                $('#delete_request_id').val(delete_requested_id);
+            });
+            // Delete Rule
+            $("#deleteRule").click(function(){
+                // Post the Delete values
+                 $.ajax({
+                         type: 'POST' ,
+                         url: '/gmail/rules/delete/',
+                         datatype: 'json' ,
+                         data:{
+                             csrfmiddlewaretoken: '{{ csrf_token }}',
+                             rule_id : $('#delete_request_id').val(),
+                             },
+                             success: function(response_json) {
+                                 alert("Successfully deleted");
+                                 window.location.reload();
+                            },
+                            error: function (xhr, errmsg, err) {
+                                alert(xhr.status + ": " + xhr.responseText);
+                            }
+                 });
+            });
+        });
+     </script>
+</head>
+<body>
+<div class="col-xs-10" name="create_rule" id="create_rule" style="text-align: center; margin: 10px 0px 10px 0px;">
+    <span style="font-weight: bolder; font-size: 23px;"> Gmail Rule Logs </span>
+    <a class="btn btn-primary btn-sm" data-toggle="modal" href="{% url 'gmail_action_rules' 'create' %}" role="button" style="float: right">
+        Create Rule  <span class="glyphicon glyphicon-envelope" style="padding-left: 2px;"></span>
+    </a>
+</div>
+<div class="col-xs-10" name="Container">
+    <table class="table table-bordered" style="">
+        <thead>
+            <tr>
+                <th> Rule Name </th>
+                <th> Rule Condition </th>
+                <th> Rule Filters </th>
+                <th> Rule Actions </th>
+                <th> Delete Action </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for list_rule in list_rule_results %}
+            <tr>
+                <td> {{ list_rule.rule_name }}</td>
+                <td> {{ list_rule.rule_condition }} </td>
+                <td> {{ list_rule.rule_criteria }} </td>
+                <td> {{ list_rule.rule_action }} </td>
+                <td> <a id="deleteRow" class={{ list_rule.rule_id }}> <span class="glyphicon glyphicon-trash"></span> </a> </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Delete Modal -->
+  <div class="modal fade" id="deleteModel" role="dialog">
+    <div class="modal-dialog">
+
+      <!-- Delete Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Delete Rule</h4>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="delete_request_id" id="delete_request_id" >
+          <p style="color: brown; font-size: 15px;">Do you need to delete this rule? </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary btn-sm" id="deleteRule" data-dismiss="modal">Yes</button>
+          <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal">No</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
