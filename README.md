@@ -22,7 +22,7 @@ We able to access the below scenarios By this project:
 - Copy the quickstart.py from https://developers.google.com/gmail/api/quickstart/python and create the token.json file
 by run the quickstart.py
 
-- Fetch the email by Triggere http://ip:port/email/report/
+- Fetch the email by trigger http://ip:port/email/report/
 
 ![alt text](http://78.47.110.82/media/gmail_api/EmailFetch.JPG)
 
